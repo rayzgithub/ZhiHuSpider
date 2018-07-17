@@ -11,7 +11,7 @@ from urllib import parse
 import random
 import time
 import os
-from xml.sax.saxutils import unescape
+from xml.sax.saxutils import unescape,escape
 from pyquery import PyQuery as pq
 
 class ZhiHuSpider(scrapy.Spider):
@@ -308,16 +308,20 @@ class ZhiHuSpider(scrapy.Spider):
             item['upvote_count'] = ans['voteup_count']
             item['excerpt'] = ans['excerpt']
             content = ans['content']
+            #反转义html
             content = unescape(content)
-            d = pq(content)
-
-            imgs = d('img')
-            for img in imgs:
-                src = d(img).attr('src')
-                new_img = self.saveimgs(src)
-                if new_img:
-                    content = content.replace(src, new_img)
-            item['content'] = content
+            if item['upvote_count'] > self.setting['MIN_UPVOTE_COUNT']:
+                #使用pyquery解析html（类似js中jquery）
+                d = pq(content)
+                imgs = d('img')
+                for img in imgs:
+                    src = d(img).attr('src')
+                    new_img = self.saveimgs(src)
+                    if new_img:
+                        #替换原来的图片链接
+                        content = content.replace(src, new_img)
+            #重新赋值
+            item['content'] = escape(content)
             yield item
 
     # def check_human(self,response):
