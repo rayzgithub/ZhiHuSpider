@@ -100,6 +100,9 @@ MYSQL_PASSWD = '18671362731@Fb'
 MYSQL_CHARSET = 'utf8'
 MYSQL_PORT = 3306
 
+#storage img
+IMG_DIR = 'images/'
+SHOW_IMG_PATH = ''
 # Default header
 DEFAULT_REQUEST_HEADERS = {
         'Host': 'www.zhihu.com',
