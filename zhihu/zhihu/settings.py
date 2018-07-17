@@ -102,7 +102,7 @@ MYSQL_PORT = 3306
 
 #storage img
 IMG_DIR = 'images/'
-SHOW_IMG_PATH = ''
+SHOW_IMG_PATH = 'images/'
 # Default header
 DEFAULT_REQUEST_HEADERS = {
         'Host': 'www.zhihu.com',

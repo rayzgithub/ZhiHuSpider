@@ -27,6 +27,7 @@ class ZhiHuSpider(scrapy.Spider):
     answer_count = setting['ANSWER_COUNT_PER_QUESTION']
     answer_offset = setting['ANSWER_OFFSET']
     img_dir = setting['IMG_DIR']
+    show_img_path = setting['SHOW_IMG_PATH']
 
     login_header = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36',
@@ -232,15 +233,22 @@ class ZhiHuSpider(scrapy.Spider):
                 extension = 'jpg'
             u = urllib.request.urlopen(img_url)
             data = u.read()
-            path = self.img_dir + str(time.strftime("%Y%m%d"))
+            # 上层目录 以日期命名
+            parent_dir = str(time.strftime("%Y%m%d"))
+            # 实际保存路径
+            path = self.img_dir + parent_dir
+            # 判断路径是否存在
             isExists = os.path.exists(path)
             if not isExists:
                 os.makedirs(path)
-            file_name = path + '/' + str(random.randint(10000, 99999))
+            # 生成随机文件名
+            name = str(random.randint(10000, 99999))
+            file_name = path + '/' + name
             f = open(file_name + '.' + extension, 'wb')
             f.write(data)
             f.close()
-            return file_name + '.' + extension
+            # 返回展示在网页的文件路径
+            return self.show_img_path + parent_dir + '/' + name + '.' + extension
         else:
             return False
     def parse_question(self, response):
@@ -300,14 +308,6 @@ class ZhiHuSpider(scrapy.Spider):
             item['upvote_count'] = ans['voteup_count']
             item['excerpt'] = ans['excerpt']
             content = ans['content']
-
-            print(1111111111)
-            print(1111111111)
-            print(1111111111)
-            print(content)
-            print(1111111111)
-            print(1111111111)
-            print(1111111111)
             content = unescape(content)
             d = pq(content)
 
@@ -317,6 +317,7 @@ class ZhiHuSpider(scrapy.Spider):
                 new_img = self.saveimgs(src)
                 if new_img:
                     content = content.replace(src, new_img)
+            item['content'] = content
             yield item
 
     # def check_human(self,response):
