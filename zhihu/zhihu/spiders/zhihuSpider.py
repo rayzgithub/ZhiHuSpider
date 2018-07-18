@@ -321,7 +321,7 @@ class ZhiHuSpider(scrapy.Spider):
                         #替换原来的图片链接
                         content = content.replace(src, new_img)
             #重新赋值
-            item['content'] = escape(content)
+            item['content'] = content
             yield item
 
     # def check_human(self,response):
