@@ -6,7 +6,13 @@ import json
 from scrapy.utils.project import get_project_settings
 from scrapy.http.cookies import CookieJar
 import base64
+import urllib
 from urllib import parse
+import random
+import time
+import os
+from xml.sax.saxutils import unescape,escape
+from pyquery import PyQuery as pq
 
 class ZhiHuSpider(scrapy.Spider):
 
@@ -20,6 +26,8 @@ class ZhiHuSpider(scrapy.Spider):
     question_count = setting['QUESTION_COUNT']
     answer_count = setting['ANSWER_COUNT_PER_QUESTION']
     answer_offset = setting['ANSWER_OFFSET']
+    img_dir = setting['IMG_DIR']
+    show_img_path = setting['SHOW_IMG_PATH']
 
     login_header = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36',
@@ -188,6 +196,7 @@ class ZhiHuSpider(scrapy.Spider):
         else:
             print("successful!!!!!!")
             yield scrapy.Request('https://www.zhihu.com', headers=self.headers, dont_filter=True,encoding='utf-8')
+            # yield scrapy.Request('https://www.zhihu.com/question/36336562/answer/321536292', headers=self.headers, dont_filter=True,encoding='utf-8')
 
 
     def parse(self, response):
@@ -215,6 +224,33 @@ class ZhiHuSpider(scrapy.Spider):
                                  callback=self.get_more_question)
             n += 10
 
+    def saveimgs(self,img_url):
+        """保存图片"""
+        image_path = img_url.split('.')
+        extension = image_path.pop()
+        if extension in ['jpg','png','gif','jpeg']:
+            if len(extension) > 3:
+                extension = 'jpg'
+            u = urllib.request.urlopen(img_url)
+            data = u.read()
+            # 上层目录 以日期命名
+            parent_dir = str(time.strftime("%Y%m%d"))
+            # 实际保存路径
+            path = self.img_dir + parent_dir
+            # 判断路径是否存在
+            isExists = os.path.exists(path)
+            if not isExists:
+                os.makedirs(path)
+            # 生成随机文件名
+            name = str(random.randint(10000, 99999))
+            file_name = path + '/' + name
+            f = open(file_name + '.' + extension, 'wb')
+            f.write(data)
+            f.close()
+            # 返回展示在网页的文件路径
+            return self.show_img_path + parent_dir + '/' + name + '.' + extension
+        else:
+            return False
     def parse_question(self, response):
         """ 解析问题详情及获取指定范围答案 """
         item = ZhihuQuestionItem()
@@ -258,7 +294,8 @@ class ZhiHuSpider(scrapy.Spider):
 
     def parse_answer(self, response):
         """ 解析获取到的指定范围答案 """
-        answers = json.loads(response.text)
+        text = response.text
+        answers = json.loads(text)
 
         for ans in answers['data']:
             item = ZhihuAnswerItem()
@@ -270,8 +307,21 @@ class ZhiHuSpider(scrapy.Spider):
             item['comment_count'] = ans['comment_count']
             item['upvote_count'] = ans['voteup_count']
             item['excerpt'] = ans['excerpt']
-            item['content'] = ans['content']
-
+            content = ans['content']
+            #反转义html
+            content = unescape(content)
+            if item['upvote_count'] > self.setting['MIN_UPVOTE_COUNT']:
+                #使用pyquery解析html（类似js中jquery）
+                d = pq(content)
+                imgs = d('img')
+                for img in imgs:
+                    src = d(img).attr('src')
+                    new_img = self.saveimgs(src)
+                    if new_img:
+                        #替换原来的图片链接
+                        content = content.replace(src, new_img)
+            #重新赋值
+            item['content'] = content
             yield item
 
     # def check_human(self,response):
