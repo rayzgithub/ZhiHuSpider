@@ -93,6 +93,7 @@ ITEM_PIPELINES = {
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
 # Mysql Configuration
+MYSQL_HOST = '182.61.35.125'
 MYSQL_DBNAME = 'wordpress'
 MYSQL_USER = 'root'
 
@@ -121,6 +122,8 @@ POST_DATA = {
 # Notify : The reality count could be collect may be less
 QUESTION_COUNT = 1
 ANSWER_COUNT_PER_QUESTION = 20
+#采集的回答最低赞数
+MIN_UPVOTE_COUNT = 10
 
 # Specify the index where answer start to collect
 ANSWER_OFFSET = 0

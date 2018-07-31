@@ -13,6 +13,7 @@ import time
 import os
 from xml.sax.saxutils import unescape,escape
 from pyquery import PyQuery as pq
+import uuid
 
 class ZhiHuSpider(scrapy.Spider):
 
@@ -242,7 +243,8 @@ class ZhiHuSpider(scrapy.Spider):
             if not isExists:
                 os.makedirs(path)
             # 生成随机文件名
-            name = str(random.randint(10000, 99999))
+            # name = str(random.randint(1000000, 9999999))
+            name = str(uuid.uuid4())
             file_name = path + '/' + name
             f = open(file_name + '.' + extension, 'wb')
             f.write(data)
@@ -307,22 +309,65 @@ class ZhiHuSpider(scrapy.Spider):
             item['comment_count'] = ans['comment_count']
             item['upvote_count'] = ans['voteup_count']
             item['excerpt'] = ans['excerpt']
-            content = ans['content']
-            #反转义html
-            content = unescape(content)
             if item['upvote_count'] > self.setting['MIN_UPVOTE_COUNT']:
-                #使用pyquery解析html（类似js中jquery）
-                d = pq(content)
-                imgs = d('img')
-                for img in imgs:
-                    src = d(img).attr('src')
-                    new_img = self.saveimgs(src)
-                    if new_img:
-                        #替换原来的图片链接
-                        content = content.replace(src, new_img)
-            #重新赋值
-            item['content'] = content
+                item['content'] = self.parseContent(ans['content'])
+            item['content'] = ans['content']
             yield item
+    def parseContent(self,content):
+        # 反转义html
+        content = unescape(content)
+        # 使用pyquery解析html（类似js中jquery）
+        # 知乎中所有图片被<figure></figure>标签嵌套而导致无法正常显示在页面
+        d = pq(content)
+        print(content)
+        index = 0
+        #图片均由<figure></figure>此标签包裹
+        for figure in d.items('figure'):
+            #获取figure中的img标签
+            img = figure.find('noscript img')
+            print(111111111111111)
+            print(111111111111111)
+            print(111111111111111)
+            print(111111111111111)
+            print(111111111111111)
+            print(img)
+            #获取图片url
+            src = pq(img).attr('src')
+            #获取保存后图片的本地url
+            new_src = self.saveimgs(src)
+            new_img = ''
+            if new_src:
+                    # 替换原来的图片链接
+                    new_img = str(img).replace(src, new_src)
+            print(new_img)
+            content = content.replace(str(figure), new_img)
+            index = index + 1
+            print(222222222222222)
+            print(222222222222222)
+            print(figure)
+            print(222222222222222)
+            print(222222222222222)
+            print(222222222222222)
+            print(content)
+
+
+        # imgs = d('img')
+        # for img in imgs:
+        #     src = pq(img).attr('src')
+        #     print(content)
+        #     print(22222222222222)
+        #     print(22222222222222)
+        #     print(22222222222222)
+        #     print(22222222222222)
+        #     print(22222222222222)
+        #     print(22222222222222)
+        #     print(src)
+        #     new_img = self.saveimgs(src)
+        #     if new_img:
+        #         # 替换原来的图片链接
+        #         content = content.replace(src, new_img)
+        # 返回值
+        return content
 
     # def check_human(self,response):
     #     """解决知乎检测账号流量异常后的验证操作"""
