@@ -107,8 +107,8 @@ class ZhiHuSpider(scrapy.Spider):
                 'timestamp': '1529982951942',
                 'source': 'com.zhihu.web',
                 'signature': '817603c5ba5a0eef7d02beac914d0034ec184d92',
-                'username': '+8618124572055',  # 账号
-                'password': '19930910z',  # 密码
+                'username': '+86188',  # 账号
+                'password': '',  # 密码
                 'captcha': '',
                 'lang': 'cn',
                 'ref_source': 'homepage',
