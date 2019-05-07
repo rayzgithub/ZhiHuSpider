@@ -14,6 +14,8 @@ import os
 from xml.sax.saxutils import unescape,escape
 from pyquery import PyQuery as pq
 import uuid
+import execjs
+import hmac
 
 class ZhiHuSpider(scrapy.Spider):
 
@@ -30,7 +32,12 @@ class ZhiHuSpider(scrapy.Spider):
     img_dir = setting['IMG_DIR']
     show_img_path = setting['SHOW_IMG_PATH']
 
+    username = setting['ACCOUNT_USERNAME']
+    password = setting['ACCOUNT_PASSWORD']
+
     login_header = {
+        "content-type": "application/x-www-form-urlencoded",
+        "x-zse-83" : "3_1.1",
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36',
         'Referer': 'https://www.zhihu.com',
         'HOST': 'www.zhihu.com',
@@ -65,27 +72,55 @@ class ZhiHuSpider(scrapy.Spider):
                       'nt,badge[?(type=best_answerer)].topics&offset={1}&limit={2}&sort_by=default'
 
     def start_requests(self):
-
-        yield scrapy.Request('https://www.zhihu.com/', callback=self.login_zhihu)
+        yield scrapy.Request('https://www.zhihu.com/signin?next=%2F', callback=self.login_zhihu)
 
     def login_zhihu(self, response):
-        #print(1111)
         cookie_jar = CookieJar()
         cookie_jar.extract_cookies(response, response.request)
         for k, v in cookie_jar._cookies.items():
             for i, j in v.items():
                 for m, n in j.items():
                     self.cookie_dict[m] = n.value
-        #print(self.cookie_dict['_xsrf'])
         """ 获取xsrf及验证码图片 """
         xsrf = self.cookie_dict['_xsrf']
         self.headers['X-Xsrftoken'] = xsrf
         self.post_data['_xsrf'] = xsrf
 
-        #是否填写验证码
+        # #是否填写验证码
         show_captcha_url = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=cn'
-
         yield scrapy.Request(show_captcha_url, callback=self.show_captcha)
+
+    def getEncryptData(self):
+        client_id = "c3cef7c66a1843f8b3a9e6a1e3160e20"
+        grant_type = "password"
+        timestamp = str(round(time.time() * 1000))
+        source = "com.zhihu.web"
+        #获取签名
+        hash_key = "d1b964811afb40118a12068ff74a12f4"
+        m = hmac.new(hash_key, digestmod="sha1")
+        m = m.update(grant_type)
+        m = m.update(client_id)
+        m = m.update(source)
+        m = m.update(timestamp)
+        signature = m.hexdigest()
+
+        username = self.username
+        password = self.password
+        captcha = ""
+        lang = "cn"
+        ref_source = "homepage"
+        utm_source = ""
+        # 读取js文件内容
+        with open('F:\\pyscript\\ZhihuSpider\\zhihu\\zhihu\\js\\encrypt.js','r',errors='ignore') as f:
+            jscode = f.read()
+
+        ctx = execjs.compile(jscode)
+
+        strs = "client_id=" + client_id + "&grant_type=" + grant_type + "&timestamp=" + timestamp + "&source=" + source + "&signature=" + signature + "&username=" + username + "&password=" + password + "&captcha=" + captcha + "&lang=" + lang + "&ref_source=" + ref_source + "&utm_source=" + utm_source
+        # 调用js
+        encrypt_data = ctx.call('b', strs)
+
+        return encrypt_data
 
     def show_captcha(self, response):
         "查看是否有验证图片"
@@ -93,7 +128,6 @@ class ZhiHuSpider(scrapy.Spider):
         res_json = json.loads(response.body_as_unicode())
         is_show = res_json['show_captcha']
         if is_show:
-            print(33333)
             captcha_url = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=cn'
 
             yield scrapy.Request(url = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=cn', method = 'PUT',headers = self.headers,callback = self.shi_bie)
@@ -101,19 +135,8 @@ class ZhiHuSpider(scrapy.Spider):
         else:
 
             login_url = 'https://www.zhihu.com/api/v3/oauth/sign_in'
-            post_data = {
-                'client_id': 'c3cef7c66a1843f8b3a9e6a1e3160e20',
-                'grant_type': 'password',
-                'timestamp': '1529982951942',
-                'source': 'com.zhihu.web',
-                'signature': '817603c5ba5a0eef7d02beac914d0034ec184d92',
-                'username': '+86188',  # 账号
-                'password': '',  # 密码
-                'captcha': '',
-                'lang': 'cn',
-                'ref_source': 'homepage',
-                'utm_source': ''
-            }
+
+            post_data = self.getEncryptData()
 
             yield scrapy.FormRequest(login_url, formdata=post_data, headers=self.login_header,callback=self.login_success)
 
@@ -130,20 +153,20 @@ class ZhiHuSpider(scrapy.Spider):
             with open('zhihu_captcha.GIF', 'wb') as f:
                 f.write(img_data)
 
-            captcha = raw_input('请输入倒立汉字的位置：')
+            captcha = input('请输入倒立汉字的位置：')
             if len(captcha) == 2:
                 # 说明有两个倒立的汉字
                 pass
                 first_char = int(captcha[0]) - 1  # 第一个汉字对应列表中的索引
                 second_char = int(captcha[1]) - 1  # 第二个汉字对应列表中的索引
                 captcha = '{"img_size":[200,44],"input_points":[%s,%s]}' % (
-                self.points_list[first_char], self.points_list[second_char])
+                self.capacha_index[first_char], self.capacha_index[second_char])
             else:
                 # 说明只有一个倒立的汉字
                 pass
                 first_char = int(captcha[0]) - 1
                 captcha = '{"img_size":[200,44],"input_points":[%s]}' % (
-                    self.points_list[first_char])
+                    self.capacha_index[first_char])
 
             data = {
                 'input_text': captcha
@@ -167,11 +190,11 @@ class ZhiHuSpider(scrapy.Spider):
                 post_data = {
                     'client_id': 'c3cef7c66a1843f8b3a9e6a1e3160e20',
                     'grant_type': 'password',
-                    'timestamp': '1515391742289',
+                    'timestamp': round(time.time() * 1000) + '',
                     'source': 'com.zhihu.web',
                     'signature': '6d1d179e50a06d1c17d6e8b5c89f77db34f406ac',
-                    'username': '',  # 账号
-                    'password': '',  # 密码
+                    'username': self.username,  # 账号
+                    'password': self.password,  # 密码
                     'captcha': '',
                     'lang': 'cn',
                     'ref_source': 'homepage',

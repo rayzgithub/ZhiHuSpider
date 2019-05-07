@@ -93,10 +93,16 @@ ITEM_PIPELINES = {
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
 # Mysql Configuration
-MYSQL_HOST = '182.61.35.125'MYSQL_DBNAME = 'wordpress'
+MYSQL_HOST = 'localhost'
+MYSQL_DBNAME = 'test'
 MYSQL_USER = 'root'
+MYSQL_PASSWD = ''
 MYSQL_CHARSET = 'utf8'
 MYSQL_PORT = 3306
+
+# account
+ACCOUNT_USERNAME = ''
+ACCOUNT_PASSWORD = ''
 
 #storage img
 IMG_DIR = 'images/'
