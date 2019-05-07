@@ -90,38 +90,6 @@ class ZhiHuSpider(scrapy.Spider):
         show_captcha_url = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=cn'
         yield scrapy.Request(show_captcha_url, callback=self.show_captcha)
 
-    def getEncryptData(self):
-        client_id = "c3cef7c66a1843f8b3a9e6a1e3160e20"
-        grant_type = "password"
-        timestamp = str(round(time.time() * 1000))
-        source = "com.zhihu.web"
-        #获取签名
-        hash_key = "d1b964811afb40118a12068ff74a12f4"
-        m = hmac.new(hash_key, digestmod="sha1")
-        m = m.update(grant_type)
-        m = m.update(client_id)
-        m = m.update(source)
-        m = m.update(timestamp)
-        signature = m.hexdigest()
-
-        username = self.username
-        password = self.password
-        captcha = ""
-        lang = "cn"
-        ref_source = "homepage"
-        utm_source = ""
-        # 读取js文件内容
-        with open('F:\\pyscript\\ZhihuSpider\\zhihu\\zhihu\\js\\encrypt.js','r',errors='ignore') as f:
-            jscode = f.read()
-
-        ctx = execjs.compile(jscode)
-
-        strs = "client_id=" + client_id + "&grant_type=" + grant_type + "&timestamp=" + timestamp + "&source=" + source + "&signature=" + signature + "&username=" + username + "&password=" + password + "&captcha=" + captcha + "&lang=" + lang + "&ref_source=" + ref_source + "&utm_source=" + utm_source
-        # 调用js
-        encrypt_data = ctx.call('b', strs)
-
-        return encrypt_data
-
     def show_captcha(self, response):
         "查看是否有验证图片"
         #转换json
@@ -153,18 +121,18 @@ class ZhiHuSpider(scrapy.Spider):
             with open('zhihu_captcha.GIF', 'wb') as f:
                 f.write(img_data)
 
-            captcha = input('请输入倒立汉字的位置：')
-            if len(captcha) == 2:
+            captcha1,captcha2 = input('请输入倒立汉字的位置：').split(",")
+            if int(captcha2) > 0:
                 # 说明有两个倒立的汉字
                 pass
-                first_char = int(captcha[0]) - 1  # 第一个汉字对应列表中的索引
-                second_char = int(captcha[1]) - 1  # 第二个汉字对应列表中的索引
+                first_char = int(captcha1) - 1  # 第一个汉字对应列表中的索引
+                second_char = int(captcha2) - 1  # 第二个汉字对应列表中的索引
                 captcha = '{"img_size":[200,44],"input_points":[%s,%s]}' % (
                 self.capacha_index[first_char], self.capacha_index[second_char])
             else:
                 # 说明只有一个倒立的汉字
                 pass
-                first_char = int(captcha[0]) - 1
+                first_char = int(captcha1) - 1
                 captcha = '{"img_size":[200,44],"input_points":[%s]}' % (
                     self.capacha_index[first_char])
 
@@ -174,6 +142,7 @@ class ZhiHuSpider(scrapy.Spider):
             yield scrapy.FormRequest(
                 url='https://www.zhihu.com/api/v3/oauth/captcha?lang=cn',
                 headers=self.headers,
+                cookies=self.cookie_dict,
                 formdata=data,
                 callback=self.get_result
             )
@@ -187,19 +156,7 @@ class ZhiHuSpider(scrapy.Spider):
             if yan_zheng_result:
                 print(u'验证成功')
                 post_url = 'https://www.zhihu.com/api/v3/oauth/sign_in'
-                post_data = {
-                    'client_id': 'c3cef7c66a1843f8b3a9e6a1e3160e20',
-                    'grant_type': 'password',
-                    'timestamp': round(time.time() * 1000) + '',
-                    'source': 'com.zhihu.web',
-                    'signature': '6d1d179e50a06d1c17d6e8b5c89f77db34f406ac',
-                    'username': self.username,  # 账号
-                    'password': self.password,  # 密码
-                    'captcha': '',
-                    'lang': 'cn',
-                    'ref_source': 'homepage',
-                    'utm_source': ''
-                }
+                post_data = self.getEncryptData()
                 # 以上数据需要在抓包中获取
                 yield scrapy.FormRequest(
                     url=post_url,
@@ -207,20 +164,49 @@ class ZhiHuSpider(scrapy.Spider):
                     formdata=post_data,
                     callback=self.index_page
                 )
-
             else:
                 print (u'是错误的验证码！')
 
-
     def login_success(self, response):
-
         if 'err' in response.text:
             print(response.text)
             print("error!!!!!!")
         else:
             print("successful!!!!!!")
             yield scrapy.Request('https://www.zhihu.com', headers=self.headers, dont_filter=True,encoding='utf-8')
-            # yield scrapy.Request('https://www.zhihu.com/question/36336562/answer/321536292', headers=self.headers, dont_filter=True,encoding='utf-8')
+
+
+    def getEncryptData(self):
+        client_id = "c3cef7c66a1843f8b3a9e6a1e3160e20"
+        grant_type = "password"
+        timestamp = str(round(time.time() * 1000))
+        source = "com.zhihu.web"
+        #获取签名
+        hash_key = "d1b964811afb40118a12068ff74a12f4"
+        m = hmac.new(hash_key, digestmod="sha1")
+        m = m.update(grant_type)
+        m = m.update(client_id)
+        m = m.update(source)
+        m = m.update(timestamp)
+        signature = m.hexdigest()
+
+        username = self.username
+        password = self.password
+        captcha = ""
+        lang = "cn"
+        ref_source = "homepage"
+        utm_source = ""
+        # 读取js文件内容
+        with open('F:\\pyscript\\ZhihuSpider\\zhihu\\zhihu\\js\\encrypt.js','r',errors='ignore') as f:
+            jscode = f.read()
+
+        ctx = execjs.compile(jscode)
+
+        strs = "client_id=" + client_id + "&grant_type=" + grant_type + "&timestamp=" + timestamp + "&source=" + source + "&signature=" + signature + "&username=" + username + "&password=" + password + "&captcha=" + captcha + "&lang=" + lang + "&ref_source=" + ref_source + "&utm_source=" + utm_source
+        # 调用js
+        encrypt_data = ctx.call('b', strs)
+
+        return encrypt_data
 
 
     def parse(self, response):
@@ -276,6 +262,7 @@ class ZhiHuSpider(scrapy.Spider):
             return self.show_img_path + parent_dir + '/' + name + '.' + extension
         else:
             return False
+
     def parse_question(self, response):
         """ 解析问题详情及获取指定范围答案 """
         item = ZhihuQuestionItem()
@@ -333,10 +320,11 @@ class ZhiHuSpider(scrapy.Spider):
             item['upvote_count'] = ans['voteup_count']
             item['excerpt'] = ans['excerpt']
             if item['upvote_count'] > self.setting['MIN_UPVOTE_COUNT']:
-                item['content'] = self.parseContent(ans['content'])
+                item['content'] = self.parse_content(ans['content'])
             item['content'] = ans['content']
             yield item
-    def parseContent(self,content):
+
+    def parse_content(self,content):
         # 反转义html
         content = unescape(content)
         # 使用pyquery解析html（类似js中jquery）
@@ -344,19 +332,14 @@ class ZhiHuSpider(scrapy.Spider):
         d = pq(content)
         print(content)
         index = 0
-        #图片均由<figure></figure>此标签包裹
+        # 图片均由<figure></figure>此标签包裹
         for figure in d.items('figure'):
-            #获取figure中的img标签
+            # 获取figure中的img标签
             img = figure.find('noscript img')
-            print(111111111111111)
-            print(111111111111111)
-            print(111111111111111)
-            print(111111111111111)
-            print(111111111111111)
             print(img)
-            #获取图片url
+            # 获取图片url
             src = pq(img).attr('src')
-            #获取保存后图片的本地url
+            # 获取保存后图片的本地url
             new_src = self.saveimgs(src)
             new_img = ''
             if new_src:
@@ -365,30 +348,6 @@ class ZhiHuSpider(scrapy.Spider):
             print(new_img)
             content = content.replace(str(figure), new_img)
             index = index + 1
-            print(222222222222222)
-            print(222222222222222)
-            print(figure)
-            print(222222222222222)
-            print(222222222222222)
-            print(222222222222222)
-            print(content)
-
-
-        # imgs = d('img')
-        # for img in imgs:
-        #     src = pq(img).attr('src')
-        #     print(content)
-        #     print(22222222222222)
-        #     print(22222222222222)
-        #     print(22222222222222)
-        #     print(22222222222222)
-        #     print(22222222222222)
-        #     print(22222222222222)
-        #     print(src)
-        #     new_img = self.saveimgs(src)
-        #     if new_img:
-        #         # 替换原来的图片链接
-        #         content = content.replace(src, new_img)
         # 返回值
         return content
 
