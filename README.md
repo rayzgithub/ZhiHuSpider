@@ -27,9 +27,15 @@ for python v 3.7
     
     pip install pymysql
     
+    pip install PyExecJS
+    
 三、破解签名
     
     参考 ： https://mp.weixin.qq.com/s?__biz=MzU0NzY0NzQyNw%3D%3D&mid=2247484776&idx=1&sn=875c2decbf41b215ae2d564432ea89e6&chksm=fb4a7fc4cc3df6d2046eaaabed115e18daa4208eefccc0e86e3b02b073432e231cf0bd87cdad&xtrack=1&scene=0&subscene=131&clicktime=1550805130&ascene=7&d=
     
+四、运行
+    
+    cd ZhihuSpider/zhihu
+    scrapy crawl zhihu
     
 https://www.lfd.uci.edu/~gohlke/pythonlibs
