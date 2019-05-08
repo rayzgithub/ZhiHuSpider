@@ -16,6 +16,7 @@ from pyquery import PyQuery as pq
 import uuid
 import execjs
 import hmac
+import hashlib
 
 class ZhiHuSpider(scrapy.Spider):
 
@@ -83,8 +84,9 @@ class ZhiHuSpider(scrapy.Spider):
                     self.cookie_dict[m] = n.value
         """ 获取xsrf及验证码图片 """
         xsrf = self.cookie_dict['_xsrf']
-        self.headers['X-Xsrftoken'] = xsrf
-        self.post_data['_xsrf'] = xsrf
+        self.headers['x-xsrftoken'] = xsrf
+        self.headers['x-zse-83'] = "3_2.0"
+        # self.post_data['_xsrf'] = xsrf
 
         # #是否填写验证码
         show_captcha_url = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=cn'
@@ -121,7 +123,9 @@ class ZhiHuSpider(scrapy.Spider):
             with open('zhihu_captcha.GIF', 'wb') as f:
                 f.write(img_data)
 
-            captcha1,captcha2 = input('请输入倒立汉字的位置：').split(",")
+            print("在项目目录下zhihu_captcha.GIF查看验证码")
+            captcha1, captcha2 = input('请输入倒立汉字的位置(用英文“,”隔开，如只有一个验证码，第二位数字请输入0，如“3,0”)：').split(",")
+
             if int(captcha2) > 0:
                 # 说明有两个倒立的汉字
                 pass
@@ -148,6 +152,7 @@ class ZhiHuSpider(scrapy.Spider):
             )
 
     def get_result(self, response):
+        print(response.body)
         try:
             yan_zheng_result = json.loads(response.body)['success']
         except Exception as e:
@@ -156,13 +161,18 @@ class ZhiHuSpider(scrapy.Spider):
             if yan_zheng_result:
                 print(u'验证成功')
                 post_url = 'https://www.zhihu.com/api/v3/oauth/sign_in'
-                post_data = self.getEncryptData()
+                post_key = self.getEncryptData()
+                post_data = {
+                    post_key: ""
+                }
+                print(self.login_header)
+                print(post_key)
                 # 以上数据需要在抓包中获取
                 yield scrapy.FormRequest(
                     url=post_url,
-                    headers=self.headers,
+                    headers=self.login_header,
                     formdata=post_data,
-                    callback=self.index_page
+                    callback=self.login_success
                 )
             else:
                 print (u'是错误的验证码！')
@@ -173,6 +183,7 @@ class ZhiHuSpider(scrapy.Spider):
             print("error!!!!!!")
         else:
             print("successful!!!!!!")
+            print(response.text)
             yield scrapy.Request('https://www.zhihu.com', headers=self.headers, dont_filter=True,encoding='utf-8')
 
 
@@ -183,12 +194,9 @@ class ZhiHuSpider(scrapy.Spider):
         source = "com.zhihu.web"
         #获取签名
         hash_key = "d1b964811afb40118a12068ff74a12f4"
-        m = hmac.new(hash_key, digestmod="sha1")
-        m = m.update(grant_type)
-        m = m.update(client_id)
-        m = m.update(source)
-        m = m.update(timestamp)
-        signature = m.hexdigest()
+        ha = hmac.new(b'd1b964811afb40118a12068ff74a12f4', digestmod=hashlib.sha1)
+        ha.update(bytes((grant_type + client_id + source + timestamp), 'utf-8'))
+        signature = ha.hexdigest()
 
         username = self.username
         password = self.password
