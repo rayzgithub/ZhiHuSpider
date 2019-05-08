@@ -62,6 +62,7 @@ class ZhiHuSpider(scrapy.Spider):
     next_page = 'https://www.zhihu.com/api/v3/feed/topstory?action_feed=True&limit=10&' \
                 'session_token={0}&action=down&after_id={1}&desktop=true'
     session_token = ''
+    captcha = ''
 
     # 点击查看更多答案触发的url
     more_answer_url = 'https://www.zhihu.com/api/v4/questions/{0}/answers?include=data[*].is_normal,admin_closed_comment' \
@@ -73,7 +74,7 @@ class ZhiHuSpider(scrapy.Spider):
                       'nt,badge[?(type=best_answerer)].topics&offset={1}&limit={2}&sort_by=default'
 
     def start_requests(self):
-        yield scrapy.Request('https://www.zhihu.com/signin?next=%2F', callback=self.login_zhihu)
+        yield scrapy.Request('https://www.zhihu.com/signin?next=%2F',headers=self.login_header, callback=self.login_zhihu)
 
     def login_zhihu(self, response):
         cookie_jar = CookieJar()
@@ -86,7 +87,10 @@ class ZhiHuSpider(scrapy.Spider):
         xsrf = self.cookie_dict['_xsrf']
         self.headers['x-xsrftoken'] = xsrf
         self.headers['x-zse-83'] = "3_2.0"
-        # self.post_data['_xsrf'] = xsrf
+        self.post_data['_xsrf'] = xsrf
+
+        self.login_header['x-zse-83'] = "3_2.0"
+        self.login_header['x-xsrftoken'] = xsrf
 
         # #是否填写验证码
         show_captcha_url = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=cn'
@@ -94,13 +98,13 @@ class ZhiHuSpider(scrapy.Spider):
 
     def show_captcha(self, response):
         "查看是否有验证图片"
-        #转换json
+        # 转换json
         res_json = json.loads(response.body_as_unicode())
         is_show = res_json['show_captcha']
         if is_show:
             captcha_url = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=cn'
 
-            yield scrapy.Request(url = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=cn', method = 'PUT',headers = self.headers,callback = self.shi_bie)
+            yield scrapy.Request(url=captcha_url, method='PUT', headers=self.headers, callback=self.shi_bie)
 
         else:
 
@@ -139,16 +143,32 @@ class ZhiHuSpider(scrapy.Spider):
                 first_char = int(captcha1) - 1
                 captcha = '{"img_size":[200,44],"input_points":[%s]}' % (
                     self.capacha_index[first_char])
+            self.captcha = captcha
+            # data = {
+            #     'input_text': captcha
+            # }
+            # yield scrapy.FormRequest(
+            #     url='https://www.zhihu.com/api/v3/oauth/captcha?lang=cn',
+            #     headers=self.headers,
+            #     cookies=self.cookie_dict,
+            #     formdata=data,
+            #     callback=self.get_result
+            # )
 
-            data = {
-                'input_text': captcha
+            # 验证码通过登录接口验证
+            post_url = 'https://www.zhihu.com/api/v3/oauth/sign_in'
+            post_key = self.getEncryptData()
+            post_data = {
+                post_key: ""
             }
+            print(self.login_header)
+            print(post_key)
+            # 以上数据需要在抓包中获取
             yield scrapy.FormRequest(
-                url='https://www.zhihu.com/api/v3/oauth/captcha?lang=cn',
-                headers=self.headers,
-                cookies=self.cookie_dict,
-                formdata=data,
-                callback=self.get_result
+                url=post_url,
+                headers=self.login_header,
+                formdata=post_data,
+                callback=self.login_success
             )
 
     def get_result(self, response):
@@ -192,30 +212,37 @@ class ZhiHuSpider(scrapy.Spider):
         grant_type = "password"
         timestamp = str(round(time.time() * 1000))
         source = "com.zhihu.web"
-        #获取签名
-        hash_key = "d1b964811afb40118a12068ff74a12f4"
+        # 获取签名
         ha = hmac.new(b'd1b964811afb40118a12068ff74a12f4', digestmod=hashlib.sha1)
         ha.update(bytes((grant_type + client_id + source + timestamp), 'utf-8'))
         signature = ha.hexdigest()
 
-        username = self.username
-        password = self.password
-        captcha = ""
-        lang = "cn"
-        ref_source = "homepage"
-        utm_source = ""
+        postdata = {}
+        postdata['client_id'] = client_id
+        postdata['grant_type'] = grant_type
+        postdata['timestamp'] = timestamp
+        postdata['source'] = source
+        postdata['signature'] = signature
+        postdata['username'] = self.username
+        postdata['password'] = self.password
+        postdata['captcha'] = self.captcha
+        postdata['lang'] = "cn"
+        postdata['ref_source'] = "homepage"
+        postdata['utm_source'] = ""
+
+        strs = urllib.parse.urlencode(postdata)
+
         # 读取js文件内容
         with open('F:\\pyscript\\ZhihuSpider\\zhihu\\zhihu\\js\\encrypt.js','r',errors='ignore') as f:
             jscode = f.read()
 
         ctx = execjs.compile(jscode)
 
-        strs = "client_id=" + client_id + "&grant_type=" + grant_type + "&timestamp=" + timestamp + "&source=" + source + "&signature=" + signature + "&username=" + username + "&password=" + password + "&captcha=" + captcha + "&lang=" + lang + "&ref_source=" + ref_source + "&utm_source=" + utm_source
+        print(strs)
         # 调用js
         encrypt_data = ctx.call('b', strs)
 
         return encrypt_data
-
 
     def parse(self, response):
         """ 获取首页问题 """
