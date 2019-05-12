@@ -8,15 +8,14 @@ from scrapy.http.cookies import CookieJar
 import base64
 import urllib
 from urllib import parse
-import random
 import time
 import os
 from xml.sax.saxutils import unescape,escape
 from pyquery import PyQuery as pq
 import uuid
-import execjs
 import hmac
 import hashlib
+from selenium import webdriver
 
 class ZhiHuSpider(scrapy.Spider):
 
@@ -110,7 +109,11 @@ class ZhiHuSpider(scrapy.Spider):
 
             login_url = 'https://www.zhihu.com/api/v3/oauth/sign_in'
 
-            post_data = self.getEncryptData()
+            post_key = self.getEncryptData()
+
+            post_data = {
+                post_key : ''
+            }
 
             yield scrapy.FormRequest(login_url, formdata=post_data, headers=self.login_header,callback=self.login_success)
 
@@ -144,31 +147,15 @@ class ZhiHuSpider(scrapy.Spider):
                 captcha = '{"img_size":[200,44],"input_points":[%s]}' % (
                     self.capacha_index[first_char])
             self.captcha = captcha
-            # data = {
-            #     'input_text': captcha
-            # }
-            # yield scrapy.FormRequest(
-            #     url='https://www.zhihu.com/api/v3/oauth/captcha?lang=cn',
-            #     headers=self.headers,
-            #     cookies=self.cookie_dict,
-            #     formdata=data,
-            #     callback=self.get_result
-            # )
-
-            # 验证码通过登录接口验证
-            post_url = 'https://www.zhihu.com/api/v3/oauth/sign_in'
-            post_key = self.getEncryptData()
-            post_data = {
-                post_key: ""
+            data = {
+                'input_text': captcha
             }
-            print(self.login_header)
-            print(post_key)
-            # 以上数据需要在抓包中获取
             yield scrapy.FormRequest(
-                url=post_url,
-                headers=self.login_header,
-                formdata=post_data,
-                callback=self.login_success
+                url='https://www.zhihu.com/api/v3/oauth/captcha?lang=cn',
+                headers=self.headers,
+                cookies=self.cookie_dict,
+                formdata=data,
+                callback=self.get_result
             )
 
     def get_result(self, response):
@@ -195,7 +182,7 @@ class ZhiHuSpider(scrapy.Spider):
                     callback=self.login_success
                 )
             else:
-                print (u'是错误的验证码！')
+                print(u'是错误的验证码！')
 
     def login_success(self, response):
         if 'err' in response.text:
@@ -232,17 +219,20 @@ class ZhiHuSpider(scrapy.Spider):
 
         strs = urllib.parse.urlencode(postdata)
 
-        # 读取js文件内容
-        with open('F:\\pyscript\\ZhihuSpider\\zhihu\\zhihu\\js\\encrypt.js','r',errors='ignore') as f:
-            jscode = f.read()
+        query = urllib.parse.quote(strs)
 
-        ctx = execjs.compile(jscode)
+        option = webdriver.ChromeOptions()
+        option.add_experimental_option('excludeSwitches', ['enable-automation'])
 
-        print(strs)
-        # 调用js
-        encrypt_data = ctx.call('b', strs)
+        driver = webdriver.Chrome("F:\chromedriver\chromedriver.exe", options=option)
 
-        return encrypt_data
+        driver.get("file:///F:/pyscript/ZhiHuSpider/zhihu/zhihu/js/a.html?query=" + query)
+        # driver.get("https://www.zhihu.com/signin?next=%2F")
+
+        text = driver.find_element_by_tag_name('body').text
+        # print(text)
+
+        return text
 
     def parse(self, response):
         """ 获取首页问题 """

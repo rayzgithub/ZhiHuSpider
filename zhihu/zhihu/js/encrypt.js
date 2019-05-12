@@ -1,5 +1,5 @@
-
     function t(e) {
+        // console.log(sssss(e))
         return (t = "function" == typeof Symbol && "symbol" == typeof Symbol.A ? function(e) {
             return typeof e
         }
@@ -371,7 +371,8 @@
     }
     ,
     G.prototype.S = function(e) {
-        for (var t = new Buffer(e,'base64').toString('binary'), n = t.charCodeAt(0) << 8 | t.charCodeAt(1), r = [], o = 2; o < n + 2; o += 2)
+        //new Buffer(e,'base64').toString('binary')
+        for (var t = atob(e), n = t.charCodeAt(0) << 8 | t.charCodeAt(1), r = [], o = 2; o < n + 2; o += 2)
             r.push(t.charCodeAt(o) << 8 | t.charCodeAt(o + 1));
         this.G = r;
         for (var i = [], a = n + 2; a < t.length; ) {
@@ -395,8 +396,8 @@
             if ("number" != typeof r)
                 break;
             var o = Date.now();
-            if (500 < o - this.R)
-                return;
+            // if (500 < o - this.R)
+            //     return;
             this.R = o;
             try {
                 this.e(r)
@@ -409,13 +410,32 @@
     ,
     G.prototype.e = function(e) {
         var t = (61440 & e) >> 12;
+        // console.log(e)
+        // console.log(t)
+        // if(this.r[3] === 0){
+        //     this.r[3] = 68
+        // }
+        // console.log(this.r[3])
         new this.J[t](e).e(this)
     }
     ,
-    true && (new G).D("AxjgB5MAnACoAJwBpAAAABAAIAKcAqgAMAq0AzRJZAZwUpwCqACQACACGAKcBKAAIAOcBagAIAQYAjAUGgKcBqFAuAc5hTSHZAZwqrAIGgA0QJEAJAAYAzAUGgOcCaFANRQ0R2QGcOKwChoANECRACQAsAuQABgDnAmgAJwMgAGcDYwFEAAzBmAGcSqwDhoANECRACQAGAKcD6AAGgKcEKFANEcYApwRoAAxB2AGcXKwEhoANECRACQAGAKcE6AAGgKcFKFANEdkBnGqsBUaADRAkQAkABgCnBagAGAGcdKwFxoANECRACQAGAKcGKAAYAZx+rAZGgA0QJEAJAAYA5waoABgBnIisBsaADRAkQAkABgCnBygABoCnB2hQDRHZAZyWrAeGgA0QJEAJAAYBJwfoAAwFGAGcoawIBoANECRACQAGAOQALAJkAAYBJwfgAlsBnK+sCEaADRAkQAkABgDkACwGpAAGAScH4AJbAZy9rAhGgA0QJEAJACwIpAAGAScH6AAkACcI6gAnCSgAJwloACcJoAFnA2MBRAAMw5gBnNasCcaADRAkQAkABgBEio0R5EAJAGwKCAFGACcKaAAEgM0RCQGGAYSATRFZAZzshgAtCo0QCQAGAYSAjRFZAZz1hgAtCs0QCQAEAAgB7AsIAgYAJwpoAASATRBJAkYCRIANEZkBnYqEAgaBxQBOYAoBxQEOYQ0giQKGAmQABgAnC2ABRgBGgo0UhD/MQ8zECALEAgaBxQBOYAoBxQEOYQ0gpEAJAoYARoKNFIQ/zEPkAAgChgLGgkUATmBkgAaAJwthAUaCjdQFAg5kTSTJAsQCBoHFAE5gCgHFAQ5hDSCkQAkChgBGgo0UhD/MQ+QACAKGAsaCRQCOYGSABoAnC2EBRoKN1AUEDmRNJMkCxgFGgsUPzmPkgAaCJwuhAU0wCQFGAUaCxQGOZISPzZPkQAaCJwuhAU0wCQFGAUaCxQMOZISPzZPkQAaCJwuhAU0wCQFGAUaCxQSOZISPzZPkQAaCJwuhAU0wCQFGAkSAzRBJAlz/B4FUAAAAwUYIAAIBSITFQkTERwABi0GHxITAAAJLwMSGRsXHxMZAAk0Fw8HFh4NAwUABhU1EBceDwAENBcUEAAGNBkTGRcBAAFKAAkvHg4PKz4aEwIAAUsACDIVHB0QEQ4YAAsuAzs7AAoPKToKDgAHMx8SGQUvMQABSAALORoVGCQgERcCAxoACAU3ABEXAgMaAAsFGDcAERcCAxoUCgABSQAGOA8LGBsPAAYYLwsYGw8AAU4ABD8QHAUAAU8ABSkbCQ4BAAFMAAktCh8eDgMHCw8AAU0ADT4TGjQsGQMaFA0FHhkAFz4TGjQsGQMaFA0FHhk1NBkCHgUbGBEPAAFCABg9GgkjIAEmOgUHDQ8eFSU5DggJAwEcAwUAAUMAAUAADQEtFw0FBwtdWxQTGSAACBwrAxUPBR4ZAAkqGgUDAwMVEQ0ACC4DJD8eAx8RAAQ5GhUYAAFBAAAABjYRExELBAACWhgAAVoAQAg/PTw0NxcQPCQ5C3JZEBs9fkcnDRcUAXZia0Q4EhQgXHojMBY3MWVCNT0uDhMXcGQ7AUFPHigkQUwQFkhaAkEACjkTEQspNBMZPC0ABjkTEQsrLQ==");
+    undefined != typeof window && (new G).D("AxjgB5MAnACoAJwBpAAAABAAIAKcAqgAMAq0AzRJZAZwUpwCqACQACACGAKcBKAAIAOcBagAIAQYAjAUGgKcBqFAuAc5hTSHZAZwqrAIGgA0QJEAJAAYAzAUGgOcCaFANRQ0R2QGcOKwChoANECRACQAsAuQABgDnAmgAJwMgAGcDYwFEAAzBmAGcSqwDhoANECRACQAGAKcD6AAGgKcEKFANEcYApwRoAAxB2AGcXKwEhoANECRACQAGAKcE6AAGgKcFKFANEdkBnGqsBUaADRAkQAkABgCnBagAGAGcdKwFxoANECRACQAGAKcGKAAYAZx+rAZGgA0QJEAJAAYA5waoABgBnIisBsaADRAkQAkABgCnBygABoCnB2hQDRHZAZyWrAeGgA0QJEAJAAYBJwfoAAwFGAGcoawIBoANECRACQAGAOQALAJkAAYBJwfgAlsBnK+sCEaADRAkQAkABgDkACwGpAAGAScH4AJbAZy9rAhGgA0QJEAJACwIpAAGAScH6AAkACcI6gAnCSgAJwloACcJoAFnA2MBRAAMw5gBnNasCcaADRAkQAkABgBEio0R5EAJAGwKCAFGACcKaAAEgM0RCQGGAYSATRFZAZzshgAtCo0QCQAGAYSAjRFZAZz1hgAtCs0QCQAEAAgB7AsIAgYAJwpoAASATRBJAkYCRIANEZkBnYqEAgaBxQBOYAoBxQEOYQ0giQKGAmQABgAnC2ABRgBGgo0UhD/MQ8zECALEAgaBxQBOYAoBxQEOYQ0gpEAJAoYARoKNFIQ/zEPkAAgChgLGgkUATmBkgAaAJwthAUaCjdQFAg5kTSTJAsQCBoHFAE5gCgHFAQ5hDSCkQAkChgBGgo0UhD/MQ+QACAKGAsaCRQCOYGSABoAnC2EBRoKN1AUEDmRNJMkCxgFGgsUPzmPkgAaCJwuhAU0wCQFGAUaCxQGOZISPzZPkQAaCJwuhAU0wCQFGAUaCxQMOZISPzZPkQAaCJwuhAU0wCQFGAUaCxQSOZISPzZPkQAaCJwuhAU0wCQFGAkSAzRBJAlz/B4FUAAAAwUYIAAIBSITFQkTERwABi0GHxITAAAJLwMSGRsXHxMZAAk0Fw8HFh4NAwUABhU1EBceDwAENBcUEAAGNBkTGRcBAAFKAAkvHg4PKz4aEwIAAUsACDIVHB0QEQ4YAAsuAzs7AAoPKToKDgAHMx8SGQUvMQABSAALORoVGCQgERcCAxoACAU3ABEXAgMaAAsFGDcAERcCAxoUCgABSQAGOA8LGBsPAAYYLwsYGw8AAU4ABD8QHAUAAU8ABSkbCQ4BAAFMAAktCh8eDgMHCw8AAU0ADT4TGjQsGQMaFA0FHhkAFz4TGjQsGQMaFA0FHhk1NBkCHgUbGBEPAAFCABg9GgkjIAEmOgUHDQ8eFSU5DggJAwEcAwUAAUMAAUAADQEtFw0FBwtdWxQTGSAACBwrAxUPBR4ZAAkqGgUDAwMVEQ0ACC4DJD8eAx8RAAQ5GhUYAAFBAAAABjYRExELBAACWhgAAVoAQAg/PTw0NxcQPCQ5C3JZEBs9fkcnDRcUAXZia0Q4EhQgXHojMBY3MWVCNT0uDhMXcGQ7AUFPHigkQUwQFkhaAkEACjkTEQspNBMZPC0ABjkTEQsrLQ==");
     var b = function(e) {
         return __g._encrypt(encodeURIComponent(e))
     };
+
+    /**
+     * 获取js字符串
+     * @param name
+     * @returns {*}
+     */
+    function getQueryString(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null) return unescape(r[2]);
+        return null;
+    }
+
     // exports.ENCRYPT_VERSION = A,
     // exports.default = b
 
