@@ -42,14 +42,10 @@ class ZhiHuSpider(scrapy.Spider):
     }
 
 
-    # 翻页请求问题相关
-    next_page = 'https://www.zhihu.com/api/v3/feed/topstory?action_feed=True&limit=10&' \
-                'session_token={0}&action=down&after_id={1}&desktop=true'
 
-    session_token = ''
-    after_id = 5
-    limit = 6
-    page_number = 2
+
+    next_pageurl = ""
+    is_end = False
     cookies = {}
 
     option = webdriver.ChromeOptions()
@@ -92,43 +88,35 @@ class ZhiHuSpider(scrapy.Spider):
             print('未获取到关键信息')
 
         # 获取session_token
-        self.session_token = parse.parse_qs(urllib.parse.urlparse(requestUrl).query).get('session_token')[0]
+        session_token = parse.parse_qs(urllib.parse.urlparse(requestUrl).query).get('session_token')[0]
         self.cookies = driver.get_cookies()
         # 登录完成，并获取到所有关键信息
         print("登录完成............")
-        # 获取当前页的接口返回
+        # 翻页请求问题相关
+        self.next_pageurl = 'https://www.zhihu.com/api/v3/feed/topstory?session_token=' \
+                       + session_token + '&desktop=true&page_number=2&limit=6&action=down&after_id=5'
 
-        yield scrapy.Request(self.parse_page_url(), headers=self.headers, cookies=self.cookies,
+
+        while self.is_end == False:
+            yield scrapy.Request(self.next_pageurl, headers=self.headers, cookies=self.cookies,
                              callback=self.get_page_data)
-
-    def parse_page_url(self,):
-        pageurl = "https://www.zhihu.com/api/v3/feed/topstory/recommend?"
-
-        urldata = {}
-        urldata['session_token'] = self.session_token
-        urldata['after_id'] = self.after_id
-        urldata['desktop'] = 'true'
-        urldata['page_number'] = self.page_number
-        urldata['limit'] = self.limit
-        urldata['action'] = 'down'
-
-        url = pageurl + urllib.parse.urlencode(urldata)
-        print(url)
-
-        return url
 
     def get_page_data(self, response):
         """ 获取更多首页问题 """
-        question_url = 'https://www.zhihu.com/question/{0}'
+        question_url = 'https://www.zhihu.com/question/'
         questions = json.loads(response.text)
-        # 更新页数 及最后的id
-        self.page_number = self.page_number + 1
-        self.after_id = self.after_id + self.limit
+        # 更新下一页的url信息
+        self.next_pageurl = questions['paging']['next']
+        self.is_end = questions['paging']['is_end']
 
         for que in questions['data']:
-            question_id = re.findall(r'(\d+)', que['target']['question']['url'])[0]
-            yield scrapy.Request(question_url.format(question_id), headers=self.headers, cookies=self.cookies,
-                                 callback=self.parse_question)
+            question_id = que['target']['question']['id']
+            print(question_url+question_id)
+            # print(que['target']['question']['url'])
+
+            yield scrapy.Request(question_url+question_id, headers=self.headers, cookies=self.cookies,
+                                 callback=self.parse_question())
+
 
     def parse(self, response):
         """ 获取首页问题 """
@@ -205,14 +193,12 @@ class ZhiHuSpider(scrapy.Spider):
 
         yield item
 
-
-
         # 从指定位置开始获取指定数量答案
         if count_answer > self.answer_count:
             count_answer = self.answer_count
         n = self.answer_offset
         while n + 20 <= count_answer:
-            yield scrapy.Request(self.more_answer_url.format(question_id, n, n + 10), headers=self.headers,
+            yield scrapy.Request(self.more_answer_url.format(question_id, n, n + 10), headers=self.headers,cookies=self.cookies,
                                  callback=self.parse_answer)
             n += 20
 
