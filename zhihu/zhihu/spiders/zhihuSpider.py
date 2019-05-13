@@ -13,9 +13,8 @@ import os
 from xml.sax.saxutils import unescape,escape
 from pyquery import PyQuery as pq
 import uuid
-import hmac
-import hashlib
 from selenium import webdriver
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 class ZhiHuSpider(scrapy.Spider):
 
@@ -32,8 +31,6 @@ class ZhiHuSpider(scrapy.Spider):
     img_dir = setting['IMG_DIR']
     show_img_path = setting['SHOW_IMG_PATH']
 
-    username = setting['ACCOUNT_USERNAME']
-    password = setting['ACCOUNT_PASSWORD']
 
     login_header = {
         "content-type": "application/x-www-form-urlencoded",
@@ -44,24 +41,19 @@ class ZhiHuSpider(scrapy.Spider):
         ':authority': 'www.zhihu.com'
     }
 
-    cookie_dict = {}
-
-    # 验证码的文字位置都是固定的
-    capacha_index = [
-        [12.95, 14.969999999999998],
-        [36.1, 16.009999999999998],
-        [57.16, 24.44],
-        [84.52, 19.17],
-        [108.72, 28.64],
-        [132.95, 24.44],
-        [151.89, 23.380000000000002]
-    ]
 
     # 翻页请求问题相关
     next_page = 'https://www.zhihu.com/api/v3/feed/topstory?action_feed=True&limit=10&' \
                 'session_token={0}&action=down&after_id={1}&desktop=true'
+
     session_token = ''
-    captcha = ''
+    after_id = 5
+    limit = 6
+    page_number = 2
+    cookies = {}
+
+    option = webdriver.ChromeOptions()
+    option.add_experimental_option('excludeSwitches', ['enable-automation'])
 
     # 点击查看更多答案触发的url
     more_answer_url = 'https://www.zhihu.com/api/v4/questions/{0}/answers?include=data[*].is_normal,admin_closed_comment' \
@@ -73,166 +65,70 @@ class ZhiHuSpider(scrapy.Spider):
                       'nt,badge[?(type=best_answerer)].topics&offset={1}&limit={2}&sort_by=default'
 
     def start_requests(self):
-        yield scrapy.Request('https://www.zhihu.com/signin?next=%2F',headers=self.login_header, callback=self.login_zhihu)
 
-    def login_zhihu(self, response):
-        cookie_jar = CookieJar()
-        cookie_jar.extract_cookies(response, response.request)
-        for k, v in cookie_jar._cookies.items():
-            for i, j in v.items():
-                for m, n in j.items():
-                    self.cookie_dict[m] = n.value
-        """ 获取xsrf及验证码图片 """
-        xsrf = self.cookie_dict['_xsrf']
-        self.headers['x-xsrftoken'] = xsrf
-        self.headers['x-zse-83'] = "3_2.0"
-        self.post_data['_xsrf'] = xsrf
+        caps = DesiredCapabilities.CHROME
+        caps['loggingPrefs'] = {'performance': 'ALL'}
 
-        self.login_header['x-zse-83'] = "3_2.0"
-        self.login_header['x-xsrftoken'] = xsrf
+        driver = webdriver.Chrome("F:\chromedriver\chromedriver.exe", options=self.option,desired_capabilities=caps)
 
-        # #是否填写验证码
-        show_captcha_url = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=cn'
-        yield scrapy.Request(show_captcha_url, callback=self.show_captcha)
+        driver.get("https://www.zhihu.com/signin?next=%2F")
 
-    def show_captcha(self, response):
-        "查看是否有验证图片"
-        # 转换json
-        res_json = json.loads(response.body_as_unicode())
-        is_show = res_json['show_captcha']
-        if is_show:
-            captcha_url = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=cn'
+        input('请在浏览器上登陆后，请点击按任意键开始：')
 
-            yield scrapy.Request(url=captcha_url, method='PUT', headers=self.headers, callback=self.shi_bie)
+        logs = [json.loads(log['message'])['message']['params'] for log in driver.get_log('performance')]
 
-        else:
+        # 从请求信息中提取session_key
+        requestUrl = ''
+        for log in logs:
+            if 'request' in log:
+                try:
+                    if log['request']['url'].find('session_token') != -1:
+                        requestUrl = log['request']['url']
+                        break
+                except:
+                    continue
 
-            login_url = 'https://www.zhihu.com/api/v3/oauth/sign_in'
+        if requestUrl == '':
+            print('未获取到关键信息')
 
-            post_key = self.getEncryptData()
+        # 获取session_token
+        self.session_token = parse.parse_qs(urllib.parse.urlparse(requestUrl).query).get('session_token')[0]
+        self.cookies = driver.get_cookies()
+        # 登录完成，并获取到所有关键信息
+        print("登录完成............")
+        # 获取当前页的接口返回
 
-            post_data = {
-                post_key : ''
-            }
+        yield scrapy.Request(self.parse_page_url(), headers=self.headers, cookies=self.cookies,
+                             callback=self.get_page_data)
 
-            yield scrapy.FormRequest(login_url, formdata=post_data, headers=self.login_header,callback=self.login_success)
+    def parse_page_url(self,):
+        pageurl = "https://www.zhihu.com/api/v3/feed/topstory/recommend?"
 
-    def shi_bie(self, response):
-        try:
-            img = json.loads(response.body)['img_base64']
-        except Exception as e:
-            print('获取img_base64的值失败，原因：%s' % e)
-        else:
-            print('成功获取加密后的图片地址')
-            # 将加密后的图片进行解密，同时保存到本地
-            img = img.encode('utf-8')
-            img_data = base64.b64decode(img)
-            with open('zhihu_captcha.GIF', 'wb') as f:
-                f.write(img_data)
+        urldata = {}
+        urldata['session_token'] = self.session_token
+        urldata['after_id'] = self.after_id
+        urldata['desktop'] = 'true'
+        urldata['page_number'] = self.page_number
+        urldata['limit'] = self.limit
+        urldata['action'] = 'down'
 
-            print("在项目目录下zhihu_captcha.GIF查看验证码")
-            captcha1, captcha2 = input('请输入倒立汉字的位置(用英文“,”隔开，如只有一个验证码，第二位数字请输入0，如“3,0”)：').split(",")
+        url = pageurl + urllib.parse.urlencode(urldata)
+        print(url)
 
-            if int(captcha2) > 0:
-                # 说明有两个倒立的汉字
-                pass
-                first_char = int(captcha1) - 1  # 第一个汉字对应列表中的索引
-                second_char = int(captcha2) - 1  # 第二个汉字对应列表中的索引
-                captcha = '{"img_size":[200,44],"input_points":[%s,%s]}' % (
-                self.capacha_index[first_char], self.capacha_index[second_char])
-            else:
-                # 说明只有一个倒立的汉字
-                pass
-                first_char = int(captcha1) - 1
-                captcha = '{"img_size":[200,44],"input_points":[%s]}' % (
-                    self.capacha_index[first_char])
-            self.captcha = captcha
-            data = {
-                'input_text': captcha
-            }
-            yield scrapy.FormRequest(
-                url='https://www.zhihu.com/api/v3/oauth/captcha?lang=cn',
-                headers=self.headers,
-                cookies=self.cookie_dict,
-                formdata=data,
-                callback=self.get_result
-            )
+        return url
 
-    def get_result(self, response):
-        print(response.body)
-        try:
-            yan_zheng_result = json.loads(response.body)['success']
-        except Exception as e:
-            print('关于验证码的POST请求响应失败，原因：{}'.format(e))
-        else:
-            if yan_zheng_result:
-                print(u'验证成功')
-                post_url = 'https://www.zhihu.com/api/v3/oauth/sign_in'
-                post_key = self.getEncryptData()
-                post_data = {
-                    post_key: ""
-                }
-                print(self.login_header)
-                print(post_key)
-                # 以上数据需要在抓包中获取
-                yield scrapy.FormRequest(
-                    url=post_url,
-                    headers=self.login_header,
-                    formdata=post_data,
-                    callback=self.login_success
-                )
-            else:
-                print(u'是错误的验证码！')
+    def get_page_data(self, response):
+        """ 获取更多首页问题 """
+        question_url = 'https://www.zhihu.com/question/{0}'
+        questions = json.loads(response.text)
+        # 更新页数 及最后的id
+        self.page_number = self.page_number + 1
+        self.after_id = self.after_id + self.limit
 
-    def login_success(self, response):
-        if 'err' in response.text:
-            print(response.text)
-            print("error!!!!!!")
-        else:
-            print("successful!!!!!!")
-            print(response.text)
-            yield scrapy.Request('https://www.zhihu.com', headers=self.headers, dont_filter=True,encoding='utf-8')
-
-
-    def getEncryptData(self):
-        client_id = "c3cef7c66a1843f8b3a9e6a1e3160e20"
-        grant_type = "password"
-        timestamp = str(round(time.time() * 1000))
-        source = "com.zhihu.web"
-        # 获取签名
-        ha = hmac.new(b'd1b964811afb40118a12068ff74a12f4', digestmod=hashlib.sha1)
-        ha.update(bytes((grant_type + client_id + source + timestamp), 'utf-8'))
-        signature = ha.hexdigest()
-
-        postdata = {}
-        postdata['client_id'] = client_id
-        postdata['grant_type'] = grant_type
-        postdata['timestamp'] = timestamp
-        postdata['source'] = source
-        postdata['signature'] = signature
-        postdata['username'] = self.username
-        postdata['password'] = self.password
-        postdata['captcha'] = self.captcha
-        postdata['lang'] = "cn"
-        postdata['ref_source'] = "homepage"
-        postdata['utm_source'] = ""
-
-        strs = urllib.parse.urlencode(postdata)
-
-        query = urllib.parse.quote(strs)
-
-        option = webdriver.ChromeOptions()
-        option.add_experimental_option('excludeSwitches', ['enable-automation'])
-
-        driver = webdriver.Chrome("F:\chromedriver\chromedriver.exe", options=option)
-
-        driver.get("file:///F:/pyscript/ZhiHuSpider/zhihu/zhihu/js/a.html?query=" + query)
-        # driver.get("https://www.zhihu.com/signin?next=%2F")
-
-        text = driver.find_element_by_tag_name('body').text
-        # print(text)
-
-        return text
+        for que in questions['data']:
+            question_id = re.findall(r'(\d+)', que['target']['question']['url'])[0]
+            yield scrapy.Request(question_url.format(question_id), headers=self.headers, cookies=self.cookies,
+                                 callback=self.parse_question)
 
     def parse(self, response):
         """ 获取首页问题 """
@@ -305,6 +201,7 @@ class ZhiHuSpider(scrapy.Spider):
         question_id = int(re.match(r'https://www.zhihu.com/question/(\d+)', response.url).group(1))
 
         item['question_id'] = question_id
+        print(item)
 
         yield item
 
@@ -319,15 +216,6 @@ class ZhiHuSpider(scrapy.Spider):
                                  callback=self.parse_answer)
             n += 20
 
-    def get_more_question(self, response):
-        """ 获取更多首页问题 """
-        question_url = 'https://www.zhihu.com/question/{0}'
-        questions = json.loads(response.text)
-
-        for que in questions['data']:
-            question_id = re.findall(r'(\d+)', que['target']['question']['url'])[0]
-            yield scrapy.Request(question_url.format(question_id), headers=self.headers,
-                                 callback=self.parse_question)
 
     def parse_answer(self, response):
         """ 解析获取到的指定范围答案 """
