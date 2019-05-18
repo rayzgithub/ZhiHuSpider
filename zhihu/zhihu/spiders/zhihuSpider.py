@@ -25,11 +25,16 @@ class ZhiHuSpider(scrapy.Spider):
     setting = get_project_settings()
     headers = setting['DEFAULT_REQUEST_HEADERS']
     post_data = setting['POST_DATA']
+    # 总共爬取多少个问题
     question_count = setting['QUESTION_COUNT']
+    # 每个问题获取遍历多少个答案
     answer_count = setting['ANSWER_COUNT_PER_QUESTION']
     answer_offset = setting['ANSWER_OFFSET']
     img_dir = setting['IMG_DIR']
     show_img_path = setting['SHOW_IMG_PATH']
+
+    username = setting['ACCOUNT_USERNAME']
+    password = setting['ACCOUNT_PASSWORD']
 
 
     login_header = {
@@ -47,6 +52,9 @@ class ZhiHuSpider(scrapy.Spider):
     next_pageurl = ""
     is_end = False
     cookies = {}
+
+    curl_questions = 0
+
 
     option = webdriver.ChromeOptions()
     option.add_experimental_option('excludeSwitches', ['enable-automation'])
@@ -68,6 +76,12 @@ class ZhiHuSpider(scrapy.Spider):
         driver = webdriver.Chrome("F:\chromedriver\chromedriver.exe", options=self.option,desired_capabilities=caps)
 
         driver.get("https://www.zhihu.com/signin?next=%2F")
+
+        if self.username != '':
+            driver.find_element_by_xpath("//*[@name='username']").send_keys(self.username)
+
+        if self.password != '':
+            driver.find_element_by_xpath("//*[@name='password']").send_keys(self.password)
 
         input('请在浏览器上登陆后，请点击按任意键开始：')
 
@@ -92,11 +106,12 @@ class ZhiHuSpider(scrapy.Spider):
         self.cookies = driver.get_cookies()
         # 登录完成，并获取到所有关键信息
         print("登录完成............")
+        driver.close()
         # 翻页请求问题相关
         self.next_pageurl = 'https://www.zhihu.com/api/v3/feed/topstory?session_token=' \
                        + session_token + '&desktop=true&page_number=2&limit=6&action=down&after_id=5'
 
-
+        # 翻页
         while self.is_end == False:
             yield scrapy.Request(self.next_pageurl, headers=self.headers, cookies=self.cookies,
                              callback=self.get_page_data)
@@ -110,38 +125,15 @@ class ZhiHuSpider(scrapy.Spider):
         self.is_end = questions['paging']['is_end']
 
         for que in questions['data']:
-            question_id = que['target']['question']['id']
-            print(question_url+question_id)
-            # print(que['target']['question']['url'])
-
-            yield scrapy.Request(question_url+question_id, headers=self.headers, cookies=self.cookies,
-                                 callback=self.parse_question())
-
-
-    def parse(self, response):
-        """ 获取首页问题 """
-        # /question/19618276/answer/267334062
-        question_urls = response.xpath('//a[@data-za-detail-view-element_name="Title"]/@href').extract()
-
-        question_urls = [parse.urljoin(response.url, url) for url in question_urls]
-        print(question_urls)
-
-        # # 翻页用到的session_token 和 authorization都可在首页源代码找到
-        self.session_token = re.findall(r'session_token=([0-9,a-z]{32})', response.text)[0]
-        # auto = re.findall(r'carCompose&quot;:&quot;(.*?)&quot', response.text)[0]
-        # self.headers['authorization'] = 'Bearer ' + auto
-        #
-        # # 首页第一页问题
-        for url in question_urls:
-            question_detail = url
-            yield scrapy.Request(question_detail, headers=self.headers, callback=self.parse_question)
-        #
-        # 获取指定数量问题
-        n = len(question_urls)
-        while n < self.question_count:
-            yield scrapy.Request(self.next_page.format(self.session_token, n), headers=self.headers,
-                                 callback=self.get_more_question)
-            n += 10
+            if ('target' in que) & ('question' in que['target']):
+                question_id = que['target']['question']['id']
+                url = question_url + str(question_id)
+                if self.is_end == False :
+                    yield scrapy.Request(url, headers=self.headers, cookies=self.cookies,
+                                     callback=self.parse_question)
+                    # 爬取的问题数+1
+                    self.curl_questions += 1
+                    self.is_end = self.curl_questions >= self.question_count
 
     def saveimgs(self,img_url):
         """保存图片"""
@@ -189,7 +181,6 @@ class ZhiHuSpider(scrapy.Spider):
         question_id = int(re.match(r'https://www.zhihu.com/question/(\d+)', response.url).group(1))
 
         item['question_id'] = question_id
-        print(item)
 
         yield item
 

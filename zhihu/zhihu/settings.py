@@ -92,15 +92,15 @@ ITEM_PIPELINES = {
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
-# Mysql Configuration
+# mysql 配置
 MYSQL_HOST = 'localhost'
 MYSQL_DBNAME = 'test'
 MYSQL_USER = 'root'
-MYSQL_PASSWD = ''
+MYSQL_PASSWD = 'root'
 MYSQL_CHARSET = 'utf8'
 MYSQL_PORT = 3306
 
-# account
+# 账号信息
 ACCOUNT_USERNAME = ''
 ACCOUNT_PASSWORD = ''
 
@@ -121,17 +121,20 @@ POST_DATA = {
         'password': 'Your_password',
     }
 
-# Count of question and answer
-# Notify : The reality count could be collect may be less
+
+# 采集问题个数
 QUESTION_COUNT = 1
-ANSWER_COUNT_PER_QUESTION = 20
-#采集的回答最低赞数
+
+# 每个问题最多采集 x 个回答
+ANSWER_COUNT_PER_QUESTION = 200
+
+# 采集回答赞同高于 x 的回答  有效回答
 MIN_UPVOTE_COUNT = 10
 
 # Specify the index where answer start to collect
 ANSWER_OFFSET = 0
 
-#日志功能
+# 日志功能
 # LOG_ENABLED = True
 # LOG_ENCODING = 'utf-8'
 # LOG_FILE = 'error.txt'
