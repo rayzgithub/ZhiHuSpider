@@ -29,7 +29,7 @@ for python v 3.7
     
     pip install selenium
     
-    下载chrome版本对应的chromedriver http://npm.taobao.org/mirrors/chromedriver/  放置于 F:\chromedriver\chromedriver.exe
+    
     
 三、破解签名
     
@@ -40,10 +40,44 @@ for python v 3.7
     cd ZhihuSpider/zhihu
     scrapy crawl zhihu --nolog
     
-https://www.lfd.uci.edu/~gohlke/pythonlibs
+五、mysql表结构  问题及答案存储表
+
+    CREATE TABLE `zhihu_question` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `question_id` int(11) NOT NULL,
+      `name` varchar(255) CHARACTER SET utf8mb4 DEFAULT NULL,
+      `url` varchar(255) DEFAULT NULL,
+      `keywords` varchar(255) DEFAULT NULL,
+      `answer_count` int(255) DEFAULT NULL,
+      `flower_count` int(255) DEFAULT NULL,
+      `comment_count` int(255) DEFAULT NULL,
+      `date_created` datetime DEFAULT NULL,
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=210 DEFAULT CHARSET=utf8;
+
+    CREATE TABLE `zhihu_answer` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `question_id` int(11) DEFAULT NULL,
+      `answer_id` int(11) DEFAULT NULL,
+      `author` varchar(255) DEFAULT NULL,
+      `ans_url` varchar(255) DEFAULT NULL,
+      `upvote_count` int(11) DEFAULT NULL,
+      `comment_count` int(11) DEFAULT NULL,
+      `excerpt` text CHARACTER SET utf8mb4,
+      `content` text CHARACTER SET utf8mb4,
+      `is_post` tinyint(1) DEFAULT '0' COMMENT '0未发表  1 已发表',
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=5697 DEFAULT CHARSET=utf8;
+    
+    
+
+备注：
+
+    下载chrome版本对应的chromedriver http://npm.taobao.org/mirrors/chromedriver/  放置于 F:\chromedriver\chromedriver.exe
+    常用库下载：https://www.lfd.uci.edu/~gohlke/pythonlibs
 
 
-破解知乎加密方式：
+破解知乎加密方式的尝试：
     
     这几天卡在破解知乎的加密上，昨天终于把这个地方卡过去了 ^_^!! 累
     总共试了以下n种方式
