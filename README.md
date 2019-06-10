@@ -23,7 +23,7 @@ for python v 3.7
         
 二、安装其它依赖
 
-    pip install qyquery
+    pip install pyquery
     
     pip install pymysql
     
